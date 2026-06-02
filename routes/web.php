@@ -27,7 +27,7 @@ use App\Livewire\Warehouse\InputPage as WarehouseInputPage;
 use App\Livewire\Warehouse\NonValidPage as WarehouseNonValidPage;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+Route::view('/', '/login')->name('login');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', LoginPage::class)->name('login');
