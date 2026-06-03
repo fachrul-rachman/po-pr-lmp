@@ -37,7 +37,7 @@ class EditPage extends Component
 
     public function mount(Document $document): void
     {
-        if ($document->status !== DocumentStatuses::SPV_REJECTED) {
+        if (! $this->isEditableStatus($document->status)) {
             abort(403);
         }
 
@@ -49,6 +49,28 @@ class EditPage extends Component
         }
     }
 
+    private function isEditableStatus(?string $status): bool
+    {
+        return in_array($status, [
+            DocumentStatuses::WAREHOUSE_SUBMITTED,
+            DocumentStatuses::SPV_REJECTED,
+        ], true);
+    }
+
+    private function assertEditable(): Document
+    {
+        $this->document = $this->document->fresh();
+        if (! $this->document) {
+            abort(404);
+        }
+
+        if (! $this->isEditableStatus($this->document->status)) {
+            abort(403);
+        }
+
+        return $this->document;
+    }
+
     public function setMatch(string $itemId, string $status): void
     {
         $this->resetErrorBag();
@@ -56,6 +78,8 @@ class EditPage extends Component
         if (! in_array($status, ItemMatchStatuses::all(), true)) {
             return;
         }
+
+        $this->assertEditable();
 
         /** @var DocumentItem $item */
         $item = $this->document->items()->whereKey($itemId)->firstOrFail();
@@ -86,6 +110,8 @@ class EditPage extends Component
     {
         $this->resetErrorBag();
 
+        $this->assertEditable();
+
         /** @var DocumentItem $item */
         $item = $this->document->items()->whereKey($itemId)->firstOrFail();
         if (($this->match[$itemId] ?? null) !== ItemMatchStatuses::TIDAK_SESUAI && $item->match_status !== ItemMatchStatuses::TIDAK_SESUAI) {
@@ -109,6 +135,8 @@ class EditPage extends Component
     {
         $this->resetErrorBag();
 
+        $this->assertEditable();
+
         $current = $this->uploads[$itemId] ?? [];
         if (! is_array($current)) {
             return;
@@ -125,6 +153,8 @@ class EditPage extends Component
     public function uploadPhoto(string $itemId, ItemPhotoService $photos, ActivityLogService $logs): void
     {
         $this->resetErrorBag();
+
+        $this->assertEditable();
 
         $file = $this->uploads[$itemId] ?? null;
         if (! $file) {
@@ -163,6 +193,8 @@ class EditPage extends Component
     {
         $this->resetErrorBag();
 
+        $this->assertEditable();
+
         /** @var ItemPhoto $photo */
         $photo = ItemPhoto::query()
             ->whereKey($photoId)
@@ -190,6 +222,8 @@ class EditPage extends Component
     public function replacePhoto(string $photoId, ItemPhotoService $photos, ActivityLogService $logs): void
     {
         $this->resetErrorBag();
+
+        $this->assertEditable();
 
         $file = $this->replaceUploads[$photoId] ?? null;
         if (! $file) {
@@ -224,9 +258,11 @@ class EditPage extends Component
         $this->replaceUploads[$photoId] = null;
     }
 
-    public function resubmit(WarehouseWorkflowService $workflow, ItemPhotoService $photos, ActivityLogService $logs): void
+    public function saveChanges(WarehouseWorkflowService $workflow, ItemPhotoService $photos, ActivityLogService $logs): void
     {
         $this->resetErrorBag();
+
+        $doc = $this->assertEditable();
 
         /** @var \App\Models\User $actor */
         $actor = Auth::user();
@@ -236,7 +272,7 @@ class EditPage extends Component
 
         try {
             // Ensure tidak_sesuai + reason is persisted safely.
-            $items = $this->document->items()->withCount('photos')->get();
+            $items = $doc->items()->withCount('photos')->get();
             foreach ($items as $item) {
                 $chosen = (string) ($this->match[$item->id] ?? '');
                 $reason = (string) ($this->reasons[$item->id] ?? '');
@@ -266,8 +302,8 @@ class EditPage extends Component
                 }
             }
 
-            // Upload staged photos before resubmit.
-            $items = $this->document->items()->withCount('photos')->get();
+            // Upload staged photos before resubmit/save (it can affect photo count).
+            $items = $doc->items()->withCount('photos')->get();
             foreach ($items as $item) {
                 $staged = $this->uploads[$item->id] ?? [];
                 if ($staged && ! is_array($staged)) {
@@ -296,21 +332,48 @@ class EditPage extends Component
                         actor: $actor,
                         action: 'warehouse_upload_photo',
                         payload: [
-                            'document_id' => $this->document->id,
+                            'document_id' => $doc->id,
                             'document_item_id' => $item->id,
                             'item_photo_id' => $photo->id,
                         ],
-                        document: $this->document,
-                        previousStatus: $this->document->status,
-                        newStatus: $this->document->status,
+                        document: $doc,
+                        previousStatus: $doc->status,
+                        newStatus: $doc->status,
                     );
                 }
 
                 $this->uploads[$item->id] = [];
             }
 
-            $workflow->resubmit($this->document, $actor);
-            $this->redirectRoute('warehouse.history', navigate: true);
+            $doc = $doc->fresh();
+
+            if (! $doc) {
+                abort(404);
+            }
+
+            if ($doc->status === DocumentStatuses::SPV_REJECTED) {
+                $workflow->resubmit($doc, $actor);
+                $this->redirectRoute('warehouse.history', navigate: true);
+                return;
+            }
+
+            if ($doc->status === DocumentStatuses::WAREHOUSE_SUBMITTED) {
+                $logs->logUserAction(
+                    actor: $actor,
+                    action: 'warehouse_edit_submitted_document',
+                    payload: [
+                        'document_id' => $doc->id,
+                    ],
+                    document: $doc,
+                    previousStatus: $doc->status,
+                    newStatus: $doc->status,
+                );
+
+                $this->redirectRoute('warehouse.documents.show', ['document' => $doc], navigate: true);
+                return;
+            }
+
+            abort(403);
         } catch (\Throwable $e) {
             $this->addError('submit', $e->getMessage());
         }

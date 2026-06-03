@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Warehouse\InputPage as WarehouseInputPage;
+use App\Livewire\Warehouse\Documents\EditPage as WarehouseDocumentEditPage;
 use App\Models\Document;
 use App\Models\DocumentItem;
 use App\Models\DocumentDecision;
@@ -299,4 +300,36 @@ test('warehouse can edit and resubmit only when status is spv_rejected', functio
 
     expect(fn () => $workflow->resubmit($other, $actor))
         ->toThrow(RuntimeException::class, 'Warehouse can resubmit only when status is spv_rejected.');
+});
+
+test('warehouse can edit warehouse_submitted document before spv approves', function () {
+    Storage::fake('r2');
+
+    $actor = makeWarehouseUser();
+    $doc = makeDraftDocument(itemsCount: 1, status: DocumentStatuses::WAREHOUSE_SUBMITTED);
+    $doc->warehouse_submitted_at = now();
+    $doc->warehouse_submitted_by = $actor->id;
+    $doc->save();
+
+    $item = $doc->items()->firstOrFail();
+    $item->match_status = ItemMatchStatuses::TIDAK_SESUAI;
+    $item->warehouse_reason = 'Wrong item';
+    $item->save();
+
+    attachOnePhotoPerItem($doc, $actor);
+
+    Livewire::actingAs($actor)
+        ->test(WarehouseDocumentEditPage::class, ['document' => $doc])
+        ->call('setMatch', $item->id, ItemMatchStatuses::SESUAI)
+        ->set('uploads.'.$item->id, [UploadedFile::fake()->image('new.jpg', 800, 600)])
+        ->call('saveChanges')
+        ->assertRedirect(route('warehouse.documents.show', $doc));
+
+    $doc->refresh();
+    expect($doc->status)->toBe(DocumentStatuses::WAREHOUSE_SUBMITTED);
+
+    $item->refresh();
+    expect($item->match_status)->toBe(ItemMatchStatuses::SESUAI);
+    expect($item->warehouse_reason)->toBeNull();
+    expect($item->photos()->count())->toBe(2);
 });

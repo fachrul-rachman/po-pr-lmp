@@ -3,7 +3,11 @@
         <div class="flex items-start justify-between gap-3">
             <div>
                 <div class="text-base font-semibold text-[var(--color-text-main)]">Edit Dokumen</div>
-                <div class="mt-1 text-sm text-[var(--color-text-muted)]">Perbaiki item lalu kirim ulang ke SPV.</div>
+                @if ($document->status === 'spv_rejected')
+                    <div class="mt-1 text-sm text-[var(--color-text-muted)]">Perbaiki item lalu kirim ulang ke SPV.</div>
+                @else
+                    <div class="mt-1 text-sm text-[var(--color-text-muted)]">Perbaiki data sebelum SPV approve.</div>
+                @endif
             </div>
             <x-status-badge :status="$document->status" />
         </div>
@@ -59,7 +63,7 @@
 
                 <div class="space-y-2">
                     <div class="text-sm font-semibold text-[var(--color-text-main)]">Foto</div>
-                    <div class="text-sm text-[var(--color-text-muted)]">Bisa pakai kamera atau pilih dari galeri. Bisa lebih dari 1 foto. Foto akan diupload saat resubmit.</div>
+                    <div class="text-sm text-[var(--color-text-muted)]">Bisa pakai kamera atau pilih dari galeri. Bisa lebih dari 1 foto. Foto akan diupload saat simpan/kirim ulang.</div>
 
                     @php($staged = $uploads[$item->id] ?? [])
                     @php($staged = is_array($staged) ? $staged : [$staged])
@@ -70,7 +74,7 @@
                     </div>
 
                     @if ($item->photos->count() === 0 && $stagedCount === 0)
-                        <div class="text-sm text-[var(--color-text-muted)]">Belum ada foto. Pilih foto lalu resubmit.</div>
+                        <div class="text-sm text-[var(--color-text-muted)]">Belum ada foto. Pilih foto lalu simpan.</div>
                     @endif
 
                     @if ($item->photos->count() > 0)
@@ -110,7 +114,7 @@
 
                     @if ($stagedCount > 0)
                         <div class="space-y-2">
-                            <div class="text-sm font-semibold text-[var(--color-text-main)]">Foto dipilih (akan diupload saat resubmit)</div>
+                            <div class="text-sm font-semibold text-[var(--color-text-main)]">Foto dipilih (akan diupload saat simpan/kirim ulang)</div>
                             @foreach ($staged as $idx => $f)
                                 <div class="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-white p-3">
                                     <div class="min-w-0">
@@ -141,20 +145,24 @@
     </div>
 
     @error('submit')
-        <x-alert-message type="danger" title="Tidak bisa resubmit">
+        <x-alert-message type="danger" title="Tidak bisa menyimpan">
             {{ $message }}
         </x-alert-message>
     @enderror
 
     <button
         type="button"
-        wire:click="resubmit"
+        wire:click="saveChanges"
         wire:loading.attr="disabled"
-        wire:target="uploads,resubmit"
+        wire:target="uploads,saveChanges"
         class="w-full h-12 rounded-xl bg-[var(--color-navy)] text-base font-semibold text-white hover:bg-[var(--color-navy-soft)] disabled:cursor-not-allowed disabled:opacity-60"
     >
-        <span wire:loading.remove wire:target="uploads,resubmit">Kirim Ulang ke SPV</span>
+        @if ($document->status === 'spv_rejected')
+            <span wire:loading.remove wire:target="uploads,saveChanges">Kirim Ulang ke SPV</span>
+        @else
+            <span wire:loading.remove wire:target="uploads,saveChanges">Simpan Perubahan</span>
+        @endif
         <span wire:loading wire:target="uploads">Menyiapkan foto...</span>
-        <span wire:loading wire:target="resubmit">Resubmit...</span>
+        <span wire:loading wire:target="saveChanges">Menyimpan...</span>
     </button>
 </div>

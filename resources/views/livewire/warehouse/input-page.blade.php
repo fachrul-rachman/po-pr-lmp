@@ -77,7 +77,11 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <div class="text-base font-semibold text-[var(--color-text-main)]">Dokumen</div>
-                    <div class="mt-1 text-sm text-[var(--color-text-muted)]">Cek semua item dan pilih foto. Foto akan diupload saat submit.</div>
+                    @if ($document->status === null)
+                        <div class="mt-1 text-sm text-[var(--color-text-muted)]">Cek semua item dan pilih foto. Foto akan diupload saat submit.</div>
+                    @else
+                        <div class="mt-1 text-sm text-[var(--color-text-muted)]">Dokumen ini sudah disubmit dan sedang dalam proses.</div>
+                    @endif
                 </div>
                 <x-status-badge :status="$document->status" />
             </div>
@@ -94,7 +98,29 @@
             </div>
         </x-card>
 
-        <div class="space-y-3">
+        @if ($document->status !== null)
+            <x-alert-message type="info" title="Dokumen sudah ada di sistem">
+                Untuk edit (selama belum di-approve SPV), buka halaman detail dokumen.
+            </x-alert-message>
+
+            <div class="grid gap-2 sm:grid-cols-2">
+                <a
+                    href="{{ route('warehouse.documents.show', $document) }}"
+                    class="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-text-main)] hover:bg-[var(--color-surface)]"
+                >
+                    Lihat Detail
+                </a>
+                @if ($document->isEditableByWarehouse())
+                    <a
+                        href="{{ route('warehouse.documents.edit', $document) }}"
+                        class="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-navy)] px-3 text-sm font-semibold text-white hover:bg-[var(--color-navy-soft)]"
+                    >
+                        Edit
+                    </a>
+                @endif
+            </div>
+        @else
+            <div class="space-y-3">
             @foreach ($items as $item)
                 <x-card wire:key="warehouse-input-item-{{ $item->id }}" class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -243,5 +269,6 @@
             <span wire:loading wire:target="uploads">Menyiapkan foto...</span>
             <span wire:loading wire:target="submit">Submit...</span>
         </button>
+        @endif
     @endif
 </div>

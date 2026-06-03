@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Enums\DocumentStatuses;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -57,5 +58,13 @@ class Document extends Model
     {
         return $this->belongsTo(User::class, 'admin_overridden_by');
     }
-}
 
+    public function isEditableByWarehouse(): bool
+    {
+        return in_array($this->status, [
+            null,
+            DocumentStatuses::WAREHOUSE_SUBMITTED,
+            DocumentStatuses::SPV_REJECTED,
+        ], true);
+    }
+}

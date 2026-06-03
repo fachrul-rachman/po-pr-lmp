@@ -3,7 +3,6 @@
 namespace App\Livewire\Warehouse\Documents;
 
 use App\Models\Document;
-use App\Support\Enums\DocumentStatuses;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -23,7 +22,7 @@ class ShowPage extends Component
 
         return view('livewire.warehouse.documents.show-page', [
             'document' => $doc,
-            'canEdit' => $doc->status === DocumentStatuses::SPV_REJECTED,
+            'canEdit' => $doc->isEditableByWarehouse(),
         ])
             ->layoutData([
                 'title' => 'Warehouse Document Detail',
