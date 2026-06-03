@@ -18,6 +18,30 @@
         </div>
     </x-card>
 
+    @if (($spvRejectReason ?? null) || (is_array($spvItemReasons ?? null) && count($spvItemReasons) > 0))
+        <x-card class="space-y-2">
+            <div class="text-base font-semibold text-[var(--color-text-main)]">Catatan SPV</div>
+            @if ($spvRejectReason)
+                <div class="text-sm text-[var(--color-text-main)]">
+                    <span class="font-semibold">Alasan Reject:</span> {{ $spvRejectReason }}
+                </div>
+            @endif
+            @if (count($spvItemReasons) > 0)
+                <div class="space-y-1 text-sm">
+                    <div class="font-semibold text-[var(--color-text-main)]">Catatan per item:</div>
+                    <div class="space-y-1 text-[var(--color-text-muted)]">
+                        @foreach ($spvItemReasons as $r)
+                            <div>
+                                <span class="font-semibold text-[var(--color-text-main)]">{{ $r['item_name'] ?: 'Item' }}:</span>
+                                {{ $r['reason'] }}
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </x-card>
+    @endif
+
     <div class="space-y-3">
         @foreach ($items as $item)
             <x-card wire:key="warehouse-edit-item-{{ $item->id }}" class="space-y-3">
@@ -31,7 +55,7 @@
                         type="button"
                         wire:click="setMatch('{{ $item->id }}','sesuai')"
                         class="flex-1 h-12 rounded-2xl border border-[var(--color-border)] px-3 text-base font-semibold
-                            {{ ($match[$item->id] ?? '') === 'sesuai' ? 'bg-[var(--color-blue-light)] text-[var(--color-navy)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
+                            {{ ($match[$item->id] ?? '') === 'sesuai' ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
                     >
                         Sesuai
                     </button>
@@ -39,7 +63,7 @@
                         type="button"
                         wire:click="setMatch('{{ $item->id }}','tidak_sesuai')"
                         class="flex-1 h-12 rounded-2xl border border-[var(--color-border)] px-3 text-base font-semibold
-                            {{ ($match[$item->id] ?? '') === 'tidak_sesuai' ? 'bg-[color:var(--color-warning)]/10 text-[var(--color-warning)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
+                            {{ ($match[$item->id] ?? '') === 'tidak_sesuai' ? 'bg-[var(--color-warning)] text-white border-[var(--color-warning)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
                     >
                         Tidak Sesuai
                     </button>

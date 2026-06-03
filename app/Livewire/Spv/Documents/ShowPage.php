@@ -4,6 +4,7 @@ namespace App\Livewire\Spv\Documents;
 
 use App\Models\DecisionItemReason;
 use App\Models\Document;
+use App\Support\Enums\DecisionTypes;
 use App\Services\Workflow\SpvWorkflowService;
 use App\Support\Enums\DocumentStatuses;
 use App\Support\Enums\ItemMatchStatuses;
@@ -28,6 +29,11 @@ class ShowPage extends Component
     /** @var array<string, string> */
     public array $itemReasons = [];
 
+    public ?string $financeRejectReason = null;
+
+    /** @var array<int, array{item_name:string, reason:string}> */
+    public array $financeItemReasons = [];
+
     public function mount(Document $document): void
     {
         $this->document = $document;
@@ -47,6 +53,33 @@ class ShowPage extends Component
 
             foreach ($reasons as $r) {
                 $this->itemReasons[$r->document_item_id] = (string) $r->reason;
+            }
+        }
+
+        $latestFinanceReject = $document->decisions()
+            ->where('decision_type', DecisionTypes::FINANCE_REJECT)
+            ->latest('created_at')
+            ->first();
+
+        if ($latestFinanceReject) {
+            $this->financeRejectReason = is_string($latestFinanceReject->reason ?? null) ? $latestFinanceReject->reason : null;
+
+            $reasons = DecisionItemReason::query()
+                ->where('document_decision_id', $latestFinanceReject->id)
+                ->with('documentItem')
+                ->get();
+
+            $this->financeItemReasons = [];
+            foreach ($reasons as $r) {
+                $reason = trim((string) ($r->reason ?? ''));
+                if ($reason === '') {
+                    continue;
+                }
+
+                $this->financeItemReasons[] = [
+                    'item_name' => (string) ($r->documentItem?->nama_barang ?? ''),
+                    'reason' => $reason,
+                ];
             }
         }
     }
@@ -144,6 +177,8 @@ class ShowPage extends Component
             'items' => $doc->items,
             'canApprove' => $this->canApprove(),
             'canReject' => $this->canReject(),
+            'financeRejectReason' => $this->financeRejectReason,
+            'financeItemReasons' => $this->financeItemReasons,
         ])
             ->layoutData([
                 'title' => 'SPV Document Detail',

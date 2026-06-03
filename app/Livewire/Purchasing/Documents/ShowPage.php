@@ -24,7 +24,7 @@ class ShowPage extends Component
             'spvProcessedBy',
             'financeProcessedBy',
             'decisions.actor',
-            'decisions.itemReasons',
+            'decisions.itemReasons.documentItem',
         ]);
 
         return view('livewire.purchasing.documents.show-page', [

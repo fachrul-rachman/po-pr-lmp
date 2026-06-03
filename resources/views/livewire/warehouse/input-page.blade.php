@@ -137,7 +137,7 @@
                             type="button"
                             wire:click="setMatch('{{ $item->id }}','sesuai')"
                             class="flex-1 h-12 rounded-2xl border border-[var(--color-border)] px-3 text-base font-semibold
-                                {{ ($match[$item->id] ?? '') === 'sesuai' ? 'bg-[var(--color-blue-light)] text-[var(--color-navy)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
+                                {{ ($match[$item->id] ?? '') === 'sesuai' ? 'bg-[var(--color-navy)] text-white border-[var(--color-navy)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
                         >
                             Sesuai
                         </button>
@@ -145,7 +145,7 @@
                             type="button"
                             wire:click="setMatch('{{ $item->id }}','tidak_sesuai')"
                             class="flex-1 h-12 rounded-2xl border border-[var(--color-border)] px-3 text-base font-semibold
-                                {{ ($match[$item->id] ?? '') === 'tidak_sesuai' ? 'bg-[color:var(--color-warning)]/10 text-[var(--color-warning)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
+                                {{ ($match[$item->id] ?? '') === 'tidak_sesuai' ? 'bg-[var(--color-warning)] text-white border-[var(--color-warning)]' : 'bg-white text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
                         >
                             Tidak Sesuai
                         </button>

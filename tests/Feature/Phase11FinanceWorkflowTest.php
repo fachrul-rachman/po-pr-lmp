@@ -179,6 +179,12 @@ test('finance reject sets finance_rejected and appears in spv non close', functi
     expect(DecisionItemReason::query()->count())->toBe(1);
 
     $this->actingAs($spv)->get('/spv/non-close')->assertOk()->assertSee($doc->document_number);
+
+    $this->actingAs($spv)
+        ->get('/spv/documents/'.$doc->id)
+        ->assertOk()
+        ->assertSee('Mohon dicek ulang')
+        ->assertSee('Bukti kurang jelas');
 });
 
 test('finance_closed is read-only for finance workflow actions', function () {
@@ -202,4 +208,3 @@ test('non-finance cannot run finance actions', function () {
     expect(fn () => $svc->close($doc, $spv))
         ->toThrow(RuntimeException::class, 'Only Finance can close.');
 });
-

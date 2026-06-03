@@ -135,8 +135,16 @@
                             </div>
                         @endif
                         @if ($d->itemReasons && $d->itemReasons->count() > 0)
-                            <div class="mt-2 text-[var(--color-text-muted)]">
-                                Item reasons: {{ $d->itemReasons->count() }}
+                            <div class="mt-2 space-y-1 text-sm">
+                                <div class="font-semibold text-[var(--color-text-main)]">Item reasons:</div>
+                                <div class="space-y-1 text-[var(--color-text-muted)]">
+                                    @foreach ($d->itemReasons as $r)
+                                        <div>
+                                            <span class="font-semibold text-[var(--color-text-main)]">{{ $r->documentItem?->nama_barang ?? 'Item' }}:</span>
+                                            {{ $r->reason }}
+                                        </div>
+                                    @endforeach
+                                </div>
                             </div>
                         @endif
                     </div>

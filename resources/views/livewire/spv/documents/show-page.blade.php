@@ -14,6 +14,30 @@
         </div>
     </x-card>
 
+    @if (($financeRejectReason ?? null) || (is_array($financeItemReasons ?? null) && count($financeItemReasons) > 0))
+        <x-card class="space-y-2">
+            <div class="text-base font-semibold text-[var(--color-text-main)]">Catatan Finance</div>
+            @if ($financeRejectReason)
+                <div class="text-sm text-[var(--color-text-main)]">
+                    <span class="font-semibold">Alasan Reject:</span> {{ $financeRejectReason }}
+                </div>
+            @endif
+            @if (count($financeItemReasons) > 0)
+                <div class="space-y-1 text-sm">
+                    <div class="font-semibold text-[var(--color-text-main)]">Catatan per item:</div>
+                    <div class="space-y-1 text-[var(--color-text-muted)]">
+                        @foreach ($financeItemReasons as $r)
+                            <div>
+                                <span class="font-semibold text-[var(--color-text-main)]">{{ $r['item_name'] ?: 'Item' }}:</span>
+                                {{ $r['reason'] }}
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </x-card>
+    @endif
+
     @error('approve')
         <x-alert-message type="danger" title="Tidak bisa approve">
             {{ $message }}

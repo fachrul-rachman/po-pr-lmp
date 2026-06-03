@@ -8,6 +8,7 @@ use App\Models\ItemPhoto;
 use App\Services\ActivityLogService;
 use App\Services\ItemPhotoService;
 use App\Services\Workflow\WarehouseWorkflowService;
+use App\Support\Enums\DecisionTypes;
 use App\Support\Enums\DocumentStatuses;
 use App\Support\Enums\ItemMatchStatuses;
 use App\Support\Enums\UserRoles;
@@ -35,17 +36,44 @@ class EditPage extends Component
     /** @var array<string, mixed> */
     public array $replaceUploads = [];
 
+    public ?string $spvRejectReason = null;
+
+    /** @var array<int, array{item_name:string, reason:string}> */
+    public array $spvItemReasons = [];
+
     public function mount(Document $document): void
     {
         if (! $this->isEditableStatus($document->status)) {
             abort(403);
         }
 
-        $this->document = $document;
+        $this->document = $document->load(['decisions.itemReasons.documentItem']);
 
         foreach ($document->items as $item) {
             $this->match[$item->id] = (string) ($item->match_status ?? '');
             $this->reasons[$item->id] = (string) ($item->warehouse_reason ?? '');
+        }
+
+        $latestSpvReject = $this->document->decisions
+            ->where('decision_type', DecisionTypes::SPV_REJECT)
+            ->sortByDesc('created_at')
+            ->first();
+
+        if ($latestSpvReject) {
+            $this->spvRejectReason = is_string($latestSpvReject->reason ?? null) ? $latestSpvReject->reason : null;
+
+            $this->spvItemReasons = [];
+            foreach ($latestSpvReject->itemReasons as $r) {
+                $reason = trim((string) ($r->reason ?? ''));
+                if ($reason === '') {
+                    continue;
+                }
+
+                $this->spvItemReasons[] = [
+                    'item_name' => (string) ($r->documentItem?->nama_barang ?? ''),
+                    'reason' => $reason,
+                ];
+            }
         }
     }
 
@@ -386,6 +414,8 @@ class EditPage extends Component
         return view('livewire.warehouse.documents.edit-page', [
             'document' => $doc,
             'items' => $doc->items,
+            'spvRejectReason' => $this->spvRejectReason,
+            'spvItemReasons' => $this->spvItemReasons,
         ])
             ->layoutData([
                 'title' => 'Warehouse Edit Document',

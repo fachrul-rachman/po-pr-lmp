@@ -156,6 +156,12 @@ test('spv reject sets spv_rejected and appears in warehouse non valid and spv no
 
     $this->actingAs($warehouse)->get('/warehouse/non-valid')->assertOk()->assertSee($doc->document_number);
     $this->actingAs($spv)->get('/spv/non-valid')->assertOk()->assertSee($doc->document_number);
+
+    $this->actingAs($warehouse)
+        ->get('/warehouse/documents/'.$doc->id)
+        ->assertOk()
+        ->assertSee('Kurang jelas')
+        ->assertSee('Foto blur');
 });
 
 test('spv can process finance_rejected', function () {
