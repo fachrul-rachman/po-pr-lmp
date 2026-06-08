@@ -21,7 +21,10 @@
                                     {{ $doc->document_number }}
                                 </div>
                                 <div class="mt-1 text-sm text-[var(--color-text-muted)]">
-                                    {{ strtoupper($doc->document_type) }}
+                                    {{ strtoupper($doc->document_type) }} - {{ $doc->accurate_trans_date ?? '-' }}
+                                </div>
+                                <div class="mt-1 text-sm text-[var(--color-text-muted)]">
+                                    Pembuat: {{ $doc->dibuat_oleh ?? '-' }}
                                 </div>
                             </div>
                             <x-status-badge :status="$doc->status" />
@@ -36,4 +39,3 @@
         </div>
     @endif
 </div>
-

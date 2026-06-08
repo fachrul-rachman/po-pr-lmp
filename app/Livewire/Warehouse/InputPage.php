@@ -23,6 +23,8 @@ class InputPage extends Component
 {
     use WithFileUploads;
 
+    public string $company = ''; // 'kpus'|'ahl'
+
     public string $term = '';
     public string $type = ''; // '', 'po', 'pr'
 
@@ -43,14 +45,70 @@ class InputPage extends Component
     /** @var array<string, mixed> */
     public array $replaceUploads = [];
 
+    public function chooseCompany(string $company): void
+    {
+        $company = strtolower(trim($company));
+        if (! in_array($company, ['kpus', 'ahl'], true)) {
+            return;
+        }
+
+        $this->resetErrorBag();
+        $this->company = $company;
+
+        // Reset any previous search/session state.
+        $this->term = '';
+        $this->type = '';
+        $this->results = [];
+        $this->selectedDocumentId = null;
+        $this->match = [];
+        $this->reasons = [];
+        $this->uploads = [];
+        $this->replaceUploads = [];
+    }
+
+    public function changeCompany(): void
+    {
+        $this->resetErrorBag();
+        $this->company = '';
+        $this->term = '';
+        $this->type = '';
+        $this->results = [];
+        $this->selectedDocumentId = null;
+    }
+
     public function search(AccurateService $accurate): void
     {
         $this->resetErrorBag();
         $this->results = [];
 
+        if (trim($this->company) === '') {
+            $this->addError('company', 'Pilih perusahaan dulu.');
+            return;
+        }
+
         try {
             $type = $this->type !== '' ? $this->type : null;
-            $this->results = $accurate->search($this->term, $type, 5);
+            $this->results = $accurate->search($this->term, $type, 5, $this->company);
+
+            // Attach existing workflow status for visibility in results list.
+            foreach ($this->results as $idx => $r) {
+                $num = is_array($r) ? ($r['document_number'] ?? null) : null;
+                if (! is_string($num) || $num === '') {
+                    continue;
+                }
+
+                $existing = Document::query()->where('document_number', $num)->first();
+                if (! $existing) {
+                    continue;
+                }
+
+                $this->results[$idx]['existing_status'] = $existing->status;
+                $this->results[$idx]['existing_document_id'] = $existing->id;
+                $this->results[$idx]['dibuat_oleh'] = $existing->dibuat_oleh;
+                if (empty($this->results[$idx]['trans_date'] ?? null) && is_string($existing->accurate_trans_date ?? null)) {
+                    $this->results[$idx]['trans_date'] = $existing->accurate_trans_date;
+                }
+            }
 
             if (count($this->results) === 0) {
                 $this->addError('term', 'Dokumen tidak ditemukan.');
@@ -64,8 +122,13 @@ class InputPage extends Component
     {
         $this->resetErrorBag();
 
+        if (trim($this->company) === '') {
+            $this->addError('company', 'Pilih perusahaan dulu.');
+            return;
+        }
+
         try {
-            $doc = $accurate->createFromAccurateDetail($documentType, $accurateId);
+            $doc = $accurate->createFromAccurateDetail($documentType, $accurateId, $this->company);
             $this->selectedDocumentId = $doc->id;
             $this->hydrateFromDatabase();
         } catch (\Throwable $e) {
@@ -86,31 +149,15 @@ class InputPage extends Component
             abort(403);
         }
 
-        /** @var DocumentItem $item */
-        $item = $doc->items()->whereKey($itemId)->firstOrFail();
-
+        // Validate ownership: prevent updating arbitrary IDs outside this document.
+        $doc->items()->whereKey($itemId)->firstOrFail();
         $this->match[$itemId] = $status;
 
         if ($status !== ItemMatchStatuses::TIDAK_SESUAI) {
-            $item->match_status = $status;
-            $item->warehouse_reason = null;
-            $item->save();
-
+            // Keep UI state smooth: persist item checks on submit.
             $this->reasons[$itemId] = '';
             return;
         }
-
-        // DB has a check constraint: tidak_sesuai requires a non-empty reason.
-        // So we only persist tidak_sesuai when the reason is provided.
-        $reason = (string) ($this->reasons[$itemId] ?? '');
-        if (trim($reason) === '') {
-            $this->addError('reason_'.$itemId, 'Alasan wajib diisi jika Tidak Sesuai.');
-            return;
-        }
-
-        $item->match_status = ItemMatchStatuses::TIDAK_SESUAI;
-        $item->warehouse_reason = $reason;
-        $item->save();
     }
 
     public function setReason(string $itemId, string $reason): void
@@ -122,25 +169,10 @@ class InputPage extends Component
             abort(403);
         }
 
-        /** @var DocumentItem $item */
-        $item = $doc->items()->whereKey($itemId)->firstOrFail();
+        // Validate ownership: prevent updating arbitrary IDs outside this document.
+        $doc->items()->whereKey($itemId)->firstOrFail();
 
-        // If user has chosen "tidak_sesuai" in UI, allow persisting it here
-        // together with the reason (to satisfy DB constraint).
-        if (($this->match[$itemId] ?? null) !== ItemMatchStatuses::TIDAK_SESUAI && $item->match_status !== ItemMatchStatuses::TIDAK_SESUAI) {
-            return;
-        }
-
-        if (trim($reason) === '') {
-            $this->reasons[$itemId] = $reason;
-            $this->addError('reason_'.$itemId, 'Alasan wajib diisi jika Tidak Sesuai.');
-            return;
-        }
-
-        $item->match_status = ItemMatchStatuses::TIDAK_SESUAI;
-        $item->warehouse_reason = $reason;
-        $item->save();
-
+        // Keep UI state smooth: persist reason on submit.
         $this->reasons[$itemId] = $reason;
     }
 

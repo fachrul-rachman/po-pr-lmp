@@ -109,29 +109,16 @@ class EditPage extends Component
 
         $this->assertEditable();
 
-        /** @var DocumentItem $item */
-        $item = $this->document->items()->whereKey($itemId)->firstOrFail();
+        // Validate ownership: prevent updating arbitrary IDs outside this document.
+        $this->document->items()->whereKey($itemId)->firstOrFail();
 
         $this->match[$itemId] = $status;
 
         if ($status !== ItemMatchStatuses::TIDAK_SESUAI) {
-            $item->match_status = $status;
-            $item->warehouse_reason = null;
-            $item->save();
-
+            // Keep UI state smooth: persist item checks on save.
             $this->reasons[$itemId] = '';
             return;
         }
-
-        $reason = (string) ($this->reasons[$itemId] ?? '');
-        if (trim($reason) === '') {
-            $this->addError('reason_'.$itemId, 'Alasan wajib diisi jika Tidak Sesuai.');
-            return;
-        }
-
-        $item->match_status = ItemMatchStatuses::TIDAK_SESUAI;
-        $item->warehouse_reason = $reason;
-        $item->save();
     }
 
     public function setReason(string $itemId, string $reason): void
@@ -140,22 +127,10 @@ class EditPage extends Component
 
         $this->assertEditable();
 
-        /** @var DocumentItem $item */
-        $item = $this->document->items()->whereKey($itemId)->firstOrFail();
-        if (($this->match[$itemId] ?? null) !== ItemMatchStatuses::TIDAK_SESUAI && $item->match_status !== ItemMatchStatuses::TIDAK_SESUAI) {
-            return;
-        }
+        // Validate ownership: prevent updating arbitrary IDs outside this document.
+        $this->document->items()->whereKey($itemId)->firstOrFail();
 
-        if (trim($reason) === '') {
-            $this->reasons[$itemId] = $reason;
-            $this->addError('reason_'.$itemId, 'Alasan wajib diisi jika Tidak Sesuai.');
-            return;
-        }
-
-        $item->match_status = ItemMatchStatuses::TIDAK_SESUAI;
-        $item->warehouse_reason = $reason;
-        $item->save();
-
+        // Keep UI state smooth: persist reason on save.
         $this->reasons[$itemId] = $reason;
     }
 

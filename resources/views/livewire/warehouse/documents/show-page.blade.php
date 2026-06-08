@@ -66,7 +66,49 @@
                     <span class="font-semibold">Foto:</span>
                     <span class="text-[var(--color-text-main)]">{{ $item->photos->count() }}</span>
                 </div>
+
+                @if ($item->photos->count() > 0)
+                    <div class="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        @foreach ($item->photos as $p)
+                            <button
+                                type="button"
+                                wire:click="previewPhoto('{{ $p->id }}')"
+                                class="group relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-white"
+                                title="Klik untuk lihat besar"
+                            >
+                                <img
+                                    src="{{ route('item-photos.show', $p) }}"
+                                    alt="{{ $p->original_name }}"
+                                    class="h-20 w-full object-cover"
+                                    loading="lazy"
+                                />
+                                <div class="absolute inset-0 hidden bg-black/10 group-hover:block"></div>
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
             </x-card>
         @endforeach
     </div>
+
+    <x-modal :show="$showPhotoModal" title="Foto">
+        @if ($previewPhotoId)
+            <div class="space-y-3">
+                <img
+                    src="{{ route('item-photos.show', $previewPhotoId) }}"
+                    alt="Preview"
+                    class="w-full rounded-2xl border border-[var(--color-border)] bg-white object-contain"
+                />
+                <div class="flex justify-end">
+                    <button
+                        type="button"
+                        wire:click="$set('showPhotoModal', false)"
+                        class="inline-flex h-11 items-center rounded-xl border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-text-main)] hover:bg-[var(--color-surface)]"
+                    >
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        @endif
+    </x-modal>
 </div>

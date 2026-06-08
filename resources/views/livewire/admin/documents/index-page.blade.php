@@ -52,7 +52,10 @@
                                     {{ $doc->document_number }}
                                 </div>
                                 <div class="mt-1 text-sm text-[var(--color-text-muted)]">
-                                    {{ strtoupper($doc->document_type) }}
+                                    {{ strtoupper($doc->document_type) }} - {{ $doc->accurate_trans_date ?? '-' }}
+                                </div>
+                                <div class="mt-1 text-sm text-[var(--color-text-muted)]">
+                                    Pembuat: {{ $doc->dibuat_oleh ?? '-' }}
                                 </div>
                             </div>
                             <x-status-badge :status="$doc->status" />
@@ -68,6 +71,8 @@
                     <tr>
                         <th class="px-4 py-3 font-semibold">Nomor</th>
                         <th class="px-4 py-3 font-semibold">Tipe</th>
+                        <th class="px-4 py-3 font-semibold">Tanggal</th>
+                        <th class="px-4 py-3 font-semibold">Pembuat</th>
                         <th class="px-4 py-3 font-semibold">Status</th>
                         <th class="px-4 py-3 font-semibold">Action</th>
                     </tr>
@@ -77,6 +82,8 @@
                         <tr>
                             <td class="px-4 py-3 font-semibold text-[var(--color-text-main)]">{{ $doc->document_number }}</td>
                             <td class="px-4 py-3 text-[var(--color-text-muted)]">{{ strtoupper($doc->document_type) }}</td>
+                            <td class="px-4 py-3 text-[var(--color-text-muted)]">{{ $doc->accurate_trans_date ?? '-' }}</td>
+                            <td class="px-4 py-3 text-[var(--color-text-muted)]">{{ $doc->dibuat_oleh ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <x-status-badge :status="$doc->status" />
                             </td>

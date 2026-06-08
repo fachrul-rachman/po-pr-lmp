@@ -14,33 +14,33 @@ final class AccurateHttpClient
         private AccurateAuth $auth,
     ) {}
 
-    public function get(string $url, array $query = []): array
+    public function get(string $url, array $query = [], ?string $company = null): array
     {
         $res = $this->requestWithManualRedirects('GET', $url, [
             'query' => $query,
-        ]);
+        ], $company);
 
         return $this->decodeJson($res);
     }
 
-    public function post(string $url, array $data = []): array
+    public function post(string $url, array $data = [], ?string $company = null): array
     {
         $res = $this->requestWithManualRedirects('POST', $url, [
             'json' => $data,
-        ]);
+        ], $company);
 
         return $this->decodeJson($res);
     }
 
-    private function baseRequest(): PendingRequest
+    private function baseRequest(?string $company = null): PendingRequest
     {
-        return Http::withHeaders($this->auth->buildHeaders())
+        return Http::withHeaders($this->auth->buildHeaders(company: $company))
             ->timeout((int) config('accurate.timeout_seconds', 20))
             // Redirects are handled manually to preserve auth headers across hosts.
             ->withOptions(['allow_redirects' => false]);
     }
 
-    private function requestWithManualRedirects(string $method, string $url, array $options): Response
+    private function requestWithManualRedirects(string $method, string $url, array $options, ?string $company = null): Response
     {
         $max = 5;
         $currentUrl = $url;
@@ -48,7 +48,7 @@ final class AccurateHttpClient
         $currentOptions = $options;
 
         for ($i = 0; $i <= $max; $i++) {
-            $req = $this->baseRequest();
+            $req = $this->baseRequest($company);
 
             $res = $req->send($currentMethod, $currentUrl, $currentOptions);
 

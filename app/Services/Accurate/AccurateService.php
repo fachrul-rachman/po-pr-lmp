@@ -17,9 +17,9 @@ final class AccurateService
 
     /**
      * @param  string|null  $type  'po'|'pr'|null
-     * @return array<int, array{document_type:string, accurate_id:string, document_number:string, accurate_status:?string, accurate_status_name:?string, trans_date:?string}>
+     * @return array<int, array{document_type:string, accurate_id:string, document_number:string, accurate_status:?string, accurate_status_name:?string, trans_date:?string, dibuat_oleh:?string}>
      */
-    public function search(string $term, ?string $type = null, int $limit = 5): array
+    public function search(string $term, ?string $type = null, int $limit = 5, ?string $company = null): array
     {
         $term = trim($term);
         if (mb_strlen($term) < 4) {
@@ -27,7 +27,7 @@ final class AccurateService
         }
 
         if ($type === DocumentTypes::PO) {
-            $json = $this->poClient->listByNumberContains($term, $limit);
+            $json = $this->poClient->listByNumberContains($term, $limit, $company);
             $mapped = $this->mapper->mapList(DocumentTypes::PO, $json);
 
             // Some Accurate list endpoints can return minimal rows (id only).
@@ -36,51 +36,54 @@ final class AccurateService
                 return $mapped;
             }
 
-            return $this->hydrateSearchResultsFromListIds(DocumentTypes::PO, $json, $limit);
+            return $this->hydrateSearchResultsFromListIds(DocumentTypes::PO, $json, $limit, $company);
         }
 
         if ($type === DocumentTypes::PR) {
-            $json = $this->prClient->listByNumberContains($term, $limit);
+            $json = $this->prClient->listByNumberContains($term, $limit, $company);
             $mapped = $this->mapper->mapList(DocumentTypes::PR, $json);
 
             if (count($mapped) > 0) {
                 return $mapped;
             }
 
-            return $this->hydrateSearchResultsFromListIds(DocumentTypes::PR, $json, $limit);
+            return $this->hydrateSearchResultsFromListIds(DocumentTypes::PR, $json, $limit, $company);
         }
 
-        $poJson = $this->poClient->listByNumberContains($term, $limit);
-        $prJson = $this->prClient->listByNumberContains($term, $limit);
+        $poJson = $this->poClient->listByNumberContains($term, $limit, $company);
+        $prJson = $this->prClient->listByNumberContains($term, $limit, $company);
 
         $po = $this->mapper->mapList(DocumentTypes::PO, $poJson);
         $pr = $this->mapper->mapList(DocumentTypes::PR, $prJson);
 
         if (count($po) === 0) {
-            $po = $this->hydrateSearchResultsFromListIds(DocumentTypes::PO, $poJson, $limit);
+            $po = $this->hydrateSearchResultsFromListIds(DocumentTypes::PO, $poJson, $limit, $company);
         }
         if (count($pr) === 0) {
-            $pr = $this->hydrateSearchResultsFromListIds(DocumentTypes::PR, $prJson, $limit);
+            $pr = $this->hydrateSearchResultsFromListIds(DocumentTypes::PR, $prJson, $limit, $company);
         }
 
         return array_values(array_merge($pr, $po));
     }
 
-    public function fetchDetail(string $type, string|int $accurateId): array
+    public function fetchDetail(string $type, string|int $accurateId, ?string $company = null): array
     {
         $type = strtolower($type);
 
         return match ($type) {
-            DocumentTypes::PO => $this->poClient->detailById($accurateId),
-            DocumentTypes::PR => $this->prClient->detailById($accurateId),
+            DocumentTypes::PO => $this->poClient->detailById($accurateId, $company),
+            DocumentTypes::PR => $this->prClient->detailById($accurateId, $company),
             default => throw AccurateException::integration('Invalid document type.'),
         };
     }
 
-    public function createFromAccurateDetail(string $type, string|int $accurateId): Document
+    public function createFromAccurateDetail(string $type, string|int $accurateId, ?string $company = null): Document
     {
-        $json = $this->fetchDetail($type, $accurateId);
+        $json = $this->fetchDetail($type, $accurateId, $company);
         $mapped = $this->mapper->mapDetail($type, $json);
+
+        // Persist company + trans date when available so future refresh knows which credentials to use.
+        $mapped['document']['accurate_company'] = $company ? strtolower(trim($company)) : null;
 
         $docNumber = $mapped['document']['document_number'];
 
@@ -115,9 +118,9 @@ final class AccurateService
 
     /**
      * @param  array<string, mixed>  $listJson
-     * @return array<int, array{document_type:string, accurate_id:string, document_number:string, accurate_status:?string, accurate_status_name:?string, trans_date:?string}>
+     * @return array<int, array{document_type:string, accurate_id:string, document_number:string, accurate_status:?string, accurate_status_name:?string, trans_date:?string, dibuat_oleh:?string}>
      */
-    private function hydrateSearchResultsFromListIds(string $type, array $listJson, int $limit): array
+    private function hydrateSearchResultsFromListIds(string $type, array $listJson, int $limit, ?string $company = null): array
     {
         $type = strtolower($type);
 
@@ -130,7 +133,7 @@ final class AccurateService
 
         $out = [];
         foreach ($ids as $id) {
-            $detail = $this->fetchDetail($type, (string) $id);
+            $detail = $this->fetchDetail($type, (string) $id, $company);
             $d = $detail['d'] ?? null;
             if (! is_array($d)) {
                 continue;
@@ -150,6 +153,7 @@ final class AccurateService
                 'accurate_status' => is_string($d['status'] ?? null) ? $d['status'] : null,
                 'accurate_status_name' => is_string($d['statusName'] ?? null) ? $d['statusName'] : null,
                 'trans_date' => is_string($d['transDateView'] ?? null) ? $d['transDateView'] : (is_string($d['transDate'] ?? null) ? $d['transDate'] : null),
+                'dibuat_oleh' => is_string($d['charField10'] ?? null) ? $d['charField10'] : null,
             ];
         }
 

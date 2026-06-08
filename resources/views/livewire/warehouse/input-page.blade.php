@@ -1,49 +1,93 @@
 <div class="space-y-4">
-    <x-card class="space-y-4">
-        <div class="text-base font-semibold text-[var(--color-text-main)]">Cari Dokumen</div>
-
-        <div class="grid gap-3 md:grid-cols-3">
-            <div class="md:col-span-2">
-                <label for="term" class="block text-sm font-medium text-[var(--color-text-main)]">Nomor PO/PR</label>
-                <input
-                    id="term"
-                    type="text"
-                    wire:model="term"
-                    placeholder="Ketik minimal 4 karakter..."
-                    class="mt-1 h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3 outline-none focus:border-[var(--color-navy)] focus:ring-2 focus:ring-[var(--color-blue-light)]"
-                />
-                @error('term')
-                    <div class="mt-1 text-sm text-[var(--color-danger)]">{{ $message }}</div>
-                @enderror
-            </div>
+    @if (trim($company ?? '') === '')
+        <x-card class="space-y-4">
             <div>
-                <label for="type" class="block text-sm font-medium text-[var(--color-text-main)]">Tipe</label>
-                <select
-                    id="type"
-                    wire:model="type"
-                    class="mt-1 h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3 outline-none focus:border-[var(--color-navy)] focus:ring-2 focus:ring-[var(--color-blue-light)]"
-                >
-                    <option value="">PR + PO</option>
-                    <option value="pr">PR</option>
-                    <option value="po">PO</option>
-                </select>
+                <div class="text-base font-semibold text-[var(--color-text-main)]">Pilih Perusahaan</div>
+                <div class="mt-1 text-sm text-[var(--color-text-muted)]">Pilih perusahaan dulu sebelum mencari PO/PR.</div>
             </div>
-        </div>
 
-        <div class="flex items-center justify-end">
-            <button
-                type="button"
-                wire:click="search"
-                wire:loading.attr="disabled"
-                wire:target="search"
-                class="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 text-sm font-semibold text-white hover:bg-[var(--color-navy-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-                <x-icons.search class="h-5 w-5" />
-                <span wire:loading.remove wire:target="search">Cari</span>
-                <span wire:loading wire:target="search">Mencari...</span>
-            </button>
-        </div>
-    </x-card>
+            @error('company')
+                <div class="text-sm text-[var(--color-danger)]">{{ $message }}</div>
+            @enderror
+
+            <div class="grid gap-2 sm:grid-cols-2">
+                <button
+                    type="button"
+                    wire:click="chooseCompany('kpus')"
+                    class="h-14 rounded-2xl border border-[var(--color-border)] bg-white text-base font-semibold text-[var(--color-navy)] hover:bg-[var(--color-surface)]"
+                >
+                    KPUS
+                </button>
+                <button
+                    type="button"
+                    wire:click="chooseCompany('ahl')"
+                    class="h-14 rounded-2xl border border-[var(--color-border)] bg-white text-base font-semibold text-[var(--color-navy)] hover:bg-[var(--color-surface)]"
+                >
+                    AHL
+                </button>
+            </div>
+        </x-card>
+    @else
+        <x-card class="space-y-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-base font-semibold text-[var(--color-text-main)]">Cari Dokumen</div>
+                    <div class="mt-1 text-sm text-[var(--color-text-muted)]">
+                        Perusahaan: <span class="font-semibold text-[var(--color-text-main)]">{{ strtoupper($company) }}</span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    wire:click="changeCompany"
+                    class="inline-flex h-11 items-center rounded-xl border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-navy)] hover:bg-[var(--color-surface)]"
+                >
+                    Ganti perusahaan
+                </button>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-3">
+                <div class="md:col-span-2">
+                    <label for="term" class="block text-sm font-medium text-[var(--color-text-main)]">Nomor PO/PR</label>
+                    <input
+                        id="term"
+                        type="text"
+                        wire:model="term"
+                        placeholder="Ketik minimal 4 karakter..."
+                        class="mt-1 h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3 outline-none focus:border-[var(--color-navy)] focus:ring-2 focus:ring-[var(--color-blue-light)]"
+                    />
+                    @error('term')
+                        <div class="mt-1 text-sm text-[var(--color-danger)]">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div>
+                    <label for="type" class="block text-sm font-medium text-[var(--color-text-main)]">Tipe</label>
+                    <select
+                        id="type"
+                        wire:model="type"
+                        class="mt-1 h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3 outline-none focus:border-[var(--color-navy)] focus:ring-2 focus:ring-[var(--color-blue-light)]"
+                    >
+                        <option value="">PR + PO</option>
+                        <option value="pr">PR</option>
+                        <option value="po">PO</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end">
+                <button
+                    type="button"
+                    wire:click="search"
+                    wire:loading.attr="disabled"
+                    wire:target="search"
+                    class="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--color-navy)] px-4 text-sm font-semibold text-white hover:bg-[var(--color-navy-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    <x-icons.search class="h-5 w-5" />
+                    <span wire:loading.remove wire:target="search">Cari</span>
+                    <span wire:loading wire:target="search">Mencari...</span>
+                </button>
+            </div>
+        </x-card>
+    @endif
 
     @if (count($results) > 0)
         <x-card class="space-y-3">
@@ -61,10 +105,20 @@
                                     {{ $r['document_number'] }}
                                 </div>
                                 <div class="mt-1 text-sm text-[var(--color-text-muted)]">
-                                    {{ strtoupper($r['document_type']) }} · {{ $r['trans_date'] ?? '-' }}
+                                    {{ strtoupper($r['document_type']) }} - {{ $r['trans_date'] ?? '-' }}
+                                </div>
+                                <div class="mt-1 text-sm text-[var(--color-text-muted)]">
+                                    Pembuat: {{ $r['dibuat_oleh'] ?? '-' }}
                                 </div>
                             </div>
-                            <div class="shrink-0 text-sm font-semibold text-[var(--color-navy)]">Pilih</div>
+                            <div class="shrink-0 flex items-center gap-2">
+                                @if (! empty($r['existing_status'] ?? null))
+                                    <x-status-badge :status="$r['existing_status']" />
+                                @endif
+                                <div class="text-sm font-semibold text-[var(--color-navy)]">
+                                    {{ ! empty($r['existing_status'] ?? null) ? 'Buka' : 'Pilih' }}
+                                </div>
+                            </div>
                         </div>
                     </button>
                 @endforeach

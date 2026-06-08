@@ -18,7 +18,8 @@
                         <div class="truncate text-base font-semibold text-[var(--color-text-main)]">
                             {{ $doc->document_number }}
                         </div>
-                        <div class="mt-1 text-sm text-[var(--color-text-muted)]">{{ strtoupper($doc->document_type) }}</div>
+                        <div class="mt-1 text-sm text-[var(--color-text-muted)]">{{ strtoupper($doc->document_type) }} - {{ $doc->accurate_trans_date ?? '-' }}</div>
+                        <div class="mt-1 text-sm text-[var(--color-text-muted)]">Pembuat: {{ $doc->dibuat_oleh ?? '-' }}</div>
                     </a>
                     <div class="shrink-0 flex flex-col items-end gap-2">
                         <x-status-badge :status="$doc->status" />

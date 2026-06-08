@@ -28,8 +28,9 @@ final class AccurateRefreshService
     {
         $type = $document->document_type;
         $accurateId = $document->accurate_id;
+        $company = $document->accurate_company;
 
-        $json = $this->accurate->fetchDetail($type, $accurateId);
+        $json = $this->accurate->fetchDetail($type, $accurateId, is_string($company) ? $company : null);
         $mapped = $this->mapper->mapDetail($type, $json);
 
         $incomingDoc = $mapped['document'];
@@ -63,6 +64,7 @@ final class AccurateRefreshService
                 'department' => $incomingDoc['department'],
                 'dibuat_oleh' => $incomingDoc['dibuat_oleh'],
                 'diminta_oleh' => $incomingDoc['diminta_oleh'],
+                'accurate_trans_date' => $incomingDoc['accurate_trans_date'] ?? null,
                 'accurate_synced_at' => now(),
             ]);
 
@@ -140,6 +142,7 @@ final class AccurateRefreshService
     {
         return (string) $document->document_number !== (string) $incoming['document_number']
             || (string) $document->document_type !== (string) $incoming['document_type']
+            || (string) ($document->accurate_trans_date ?? '') !== (string) ($incoming['accurate_trans_date'] ?? '')
             || (string) ($document->tujuan_pembelian ?? '') !== (string) ($incoming['tujuan_pembelian'] ?? '')
             || (string) ($document->dikirim_ke ?? '') !== (string) ($incoming['dikirim_ke'] ?? '')
             || (string) ($document->department ?? '') !== (string) ($incoming['department'] ?? '')

@@ -7,7 +7,7 @@ use App\Support\Enums\DocumentTypes;
 final class AccurateDocumentMapper
 {
     /**
-     * @return array<int, array{document_type:string, accurate_id:string, document_number:string, accurate_status:?string, accurate_status_name:?string, trans_date:?string}>
+     * @return array<int, array{document_type:string, accurate_id:string, document_number:string, accurate_status:?string, accurate_status_name:?string, trans_date:?string, dibuat_oleh:?string}>
      */
     public function mapList(string $type, array $json): array
     {
@@ -34,6 +34,10 @@ final class AccurateDocumentMapper
                 'accurate_status' => is_string($row['status'] ?? null) ? $row['status'] : null,
                 'accurate_status_name' => is_string($row['statusName'] ?? null) ? $row['statusName'] : null,
                 'trans_date' => is_string($row['transDateView'] ?? null) ? $row['transDateView'] : (is_string($row['transDate'] ?? null) ? $row['transDate'] : null),
+                // Optional: list endpoints may or may not include creator fields.
+                'dibuat_oleh' => is_string($row['charField10'] ?? null)
+                    ? $row['charField10']
+                    : (is_string($row['createdByName'] ?? null) ? $row['createdByName'] : null),
             ];
         }
 
@@ -66,6 +70,9 @@ final class AccurateDocumentMapper
             'accurate_id' => (string) $accurateId,
             'document_number' => $number,
             'document_type' => $docType,
+            'accurate_trans_date' => is_string($d['transDateView'] ?? null)
+                ? $d['transDateView']
+                : (is_string($d['transDate'] ?? null) ? $d['transDate'] : null),
 
             // Custom fields (nullable in DB).
             'tujuan_pembelian' => is_string($d['charField5'] ?? null) ? $d['charField5'] : null,
@@ -144,4 +151,3 @@ final class AccurateDocumentMapper
         return [];
     }
 }
-

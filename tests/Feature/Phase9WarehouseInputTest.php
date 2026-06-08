@@ -31,6 +31,12 @@ function setAccurateConfigForWarehouse(): void
     config()->set('accurate.default_host', 'https://fallback.example');
     config()->set('accurate.timeout_seconds', 5);
     config()->set('accurate.host_cache_ttl_days', 30);
+
+    // Warehouse search requires choosing a company (kpus/ahl). When company is provided,
+    // AccurateAuth resolves credentials from accurate.companies.{company}.*.
+    config()->set('accurate.companies.kpus.api_token', 'tok');
+    config()->set('accurate.companies.kpus.signature_secret', 'sec');
+    config()->set('accurate.companies.kpus.default_host', 'https://fallback.example');
 }
 
 function makeWarehouseUser(string $username = 'warehouse1'): User
@@ -80,7 +86,7 @@ function attachOnePhotoPerItem(Document $doc, User $actor): void
 
 test('warehouse can search valid po/pr', function () {
     setAccurateConfigForWarehouse();
-    Cache::forget('accurate.host');
+    Cache::forget('accurate.host.kpus');
 
     Http::fake([
         'https://account.accurate.id/api/api-token.do' => Http::response([
@@ -105,6 +111,7 @@ test('warehouse can search valid po/pr', function () {
 
     $lw = Livewire::actingAs($actor)
         ->test(WarehouseInputPage::class)
+        ->call('chooseCompany', 'kpus')
         ->set('term', 'PO.0')
         ->set('type', '')
         ->call('search')
@@ -134,7 +141,7 @@ test('clicking tidak_sesuai without reason does not violate db constraint and sh
         ->test(WarehouseInputPage::class)
         ->set('selectedDocumentId', $doc->id)
         ->call('setMatch', $item->id, ItemMatchStatuses::TIDAK_SESUAI)
-        ->assertHasErrors(['reason_'.$item->id]);
+        ->assertHasNoErrors();
 
     $item->refresh();
     expect($item->match_status)->toBeNull();

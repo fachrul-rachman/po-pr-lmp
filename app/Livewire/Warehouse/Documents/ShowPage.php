@@ -12,9 +12,19 @@ class ShowPage extends Component
 {
     public Document $document;
 
+    public bool $showPhotoModal = false;
+    public ?string $previewPhotoId = null;
+
     public function mount(Document $document): void
     {
         $this->document = $document;
+    }
+
+    public function previewPhoto(string $photoId): void
+    {
+        $this->resetErrorBag();
+        $this->previewPhotoId = $photoId;
+        $this->showPhotoModal = true;
     }
 
     public function render()

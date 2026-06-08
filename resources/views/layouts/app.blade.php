@@ -24,7 +24,7 @@
             default => 'Unknown',
         };
 
-        $menu = match ($role) {
+        $menuMobile = match ($role) {
             'admin' => [
                 ['label' => 'Documents', 'route' => 'admin.documents.index', 'icon' => 'documents'],
                 ['label' => 'Users', 'route' => 'admin.users.index', 'icon' => 'users'],
@@ -51,7 +51,113 @@
             default => [],
         };
 
-        $gridColsClass = match (count($menu)) {
+        $menuDesktop = $menuMobile;
+
+        if ($role === 'warehouse') {
+            $historyBase = \App\Models\Document::query()
+                ->whereNotNull('warehouse_submitted_at')
+                ->where('status', '!=', \App\Support\Enums\DocumentStatuses::SPV_REJECTED);
+
+            $warehouseHistoryCounts = [
+                'all' => (clone $historyBase)->count(),
+                'warehouse_submitted' => (clone $historyBase)->where('status', \App\Support\Enums\DocumentStatuses::WAREHOUSE_SUBMITTED)->count(),
+                'spv_approved' => (clone $historyBase)->where('status', \App\Support\Enums\DocumentStatuses::SPV_APPROVED)->count(),
+                'finance_rejected' => (clone $historyBase)->where('status', \App\Support\Enums\DocumentStatuses::FINANCE_REJECTED)->count(),
+                'finance_closed' => (clone $historyBase)->where('status', \App\Support\Enums\DocumentStatuses::FINANCE_CLOSED)->count(),
+            ];
+
+            $warehouseNonValidCount = \App\Models\Document::query()
+                ->where('status', \App\Support\Enums\DocumentStatuses::SPV_REJECTED)
+                ->count();
+
+            $menuDesktop = [
+                ['label' => 'Input Barang', 'route' => 'warehouse.input', 'icon' => 'search'],
+                [
+                    'label' => 'Riwayat',
+                    'route' => 'warehouse.history',
+                    'icon' => 'history',
+                    'count' => $warehouseHistoryCounts['all'],
+                    'children' => [
+                        ['label' => 'Semua', 'route' => 'warehouse.history', 'params' => [], 'count' => $warehouseHistoryCounts['all']],
+                        ['label' => 'Menunggu SPV', 'route' => 'warehouse.history', 'params' => ['status' => \App\Support\Enums\DocumentStatuses::WAREHOUSE_SUBMITTED], 'count' => $warehouseHistoryCounts['warehouse_submitted']],
+                        ['label' => 'Menunggu Finance', 'route' => 'warehouse.history', 'params' => ['status' => \App\Support\Enums\DocumentStatuses::SPV_APPROVED], 'count' => $warehouseHistoryCounts['spv_approved']],
+                        ['label' => 'Non Close', 'route' => 'warehouse.history', 'params' => ['status' => \App\Support\Enums\DocumentStatuses::FINANCE_REJECTED], 'count' => $warehouseHistoryCounts['finance_rejected']],
+                        ['label' => 'Closed', 'route' => 'warehouse.history', 'params' => ['status' => \App\Support\Enums\DocumentStatuses::FINANCE_CLOSED], 'count' => $warehouseHistoryCounts['finance_closed']],
+                    ],
+                ],
+                ['label' => 'Non Valid', 'route' => 'warehouse.non-valid', 'icon' => 'alert', 'count' => $warehouseNonValidCount],
+            ];
+        }
+
+        if ($role === 'spv') {
+            $spvRequestCount = \App\Models\Document::query()
+                ->where('status', \App\Support\Enums\DocumentStatuses::WAREHOUSE_SUBMITTED)
+                ->count();
+
+            $spvHistoryCount = \App\Models\Document::query()
+                ->whereNotNull('spv_processed_at')
+                ->count();
+
+            $spvNonValidCount = \App\Models\Document::query()
+                ->where('status', \App\Support\Enums\DocumentStatuses::SPV_REJECTED)
+                ->count();
+
+            $spvNonCloseCount = \App\Models\Document::query()
+                ->where('status', \App\Support\Enums\DocumentStatuses::FINANCE_REJECTED)
+                ->count();
+
+            $menuMobile = [
+                ['label' => 'Request', 'route' => 'spv.request', 'icon' => 'inbox', 'count' => $spvRequestCount],
+                ['label' => 'Riwayat', 'route' => 'spv.history', 'icon' => 'history', 'count' => $spvHistoryCount],
+                ['label' => 'Non Valid', 'route' => 'spv.non-valid', 'icon' => 'alert', 'count' => $spvNonValidCount],
+                ['label' => 'Non Close', 'route' => 'spv.non-close', 'icon' => 'x-circle', 'count' => $spvNonCloseCount],
+            ];
+
+            $menuDesktop = $menuMobile;
+        }
+
+        if ($role === 'finance') {
+            $financeRequestCount = \App\Models\Document::query()
+                ->where('status', \App\Support\Enums\DocumentStatuses::SPV_APPROVED)
+                ->count();
+
+            $financeHistoryCount = \App\Models\Document::query()
+                ->whereIn('status', [\App\Support\Enums\DocumentStatuses::FINANCE_REJECTED, \App\Support\Enums\DocumentStatuses::FINANCE_CLOSED])
+                ->count();
+
+            $menuMobile = [
+                ['label' => 'Request', 'route' => 'finance.request', 'icon' => 'inbox', 'count' => $financeRequestCount],
+                ['label' => 'Riwayat', 'route' => 'finance.history', 'icon' => 'history', 'count' => $financeHistoryCount],
+            ];
+
+            $menuDesktop = $menuMobile;
+        }
+
+        if ($role === 'admin') {
+            $adminDocCount = \App\Models\Document::query()->count();
+            $adminUserCount = \App\Models\User::query()->count();
+            $adminLogCount = \App\Models\ActivityLog::query()->count();
+
+            $menuMobile = [
+                ['label' => 'Documents', 'route' => 'admin.documents.index', 'icon' => 'documents', 'count' => $adminDocCount],
+                ['label' => 'Users', 'route' => 'admin.users.index', 'icon' => 'users', 'count' => $adminUserCount],
+                ['label' => 'Logs', 'route' => 'admin.logs.index', 'icon' => 'logs', 'count' => $adminLogCount],
+            ];
+
+            $menuDesktop = $menuMobile;
+        }
+
+        if ($role === 'purchasing') {
+            $purchaseDocCount = \App\Models\Document::query()->count();
+
+            $menuMobile = [
+                ['label' => 'Dashboard', 'route' => 'purchasing.dashboard', 'icon' => 'dashboard', 'count' => $purchaseDocCount],
+            ];
+
+            $menuDesktop = $menuMobile;
+        }
+
+        $gridColsClass = match (count($menuMobile)) {
             1 => 'grid-cols-1',
             2 => 'grid-cols-2',
             3 => 'grid-cols-3',
@@ -70,8 +176,8 @@
     </div>
 
     <div class="min-h-screen lg:flex">
-        <aside class="hidden lg:block lg:w-64 lg:shrink-0">
-            <div class="h-full border-r border-[var(--color-border)] bg-[var(--color-white)]">
+        <aside class="hidden lg:block lg:w-64 lg:shrink-0 lg:sticky lg:top-0 lg:h-screen">
+            <div class="h-full border-r border-[var(--color-border)] bg-[var(--color-white)] lg:h-screen lg:overflow-y-auto">
                 <div class="px-6 py-5">
                     <div class="text-lg font-semibold text-[var(--color-navy)]">PO PR Validation</div>
                     <div class="mt-1 text-sm text-[var(--color-text-muted)]">{{ $roleLabel }}</div>
@@ -79,20 +185,68 @@
 
                 <nav class="px-3">
                     <ul class="space-y-1">
-                        @foreach ($menu as $item)
+                        @php
+                            $activeHistoryStatus = (string) request()->query('status', '');
+                        @endphp
+                        @foreach ($menuDesktop as $item)
                             @php
+                                $hasChildren = isset($item['children']) && is_array($item['children']);
                                 $isActive = request()->routeIs($item['route']);
                             @endphp
-                            <li>
-                                <a
-                                    href="{{ route($item['route']) }}"
-                                    class="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium
-                                        {{ $isActive ? 'bg-[var(--color-blue-light)] text-[var(--color-navy)]' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
-                                >
-                                    <x-dynamic-component :component="'icons.'.$item['icon']" class="h-5 w-5" />
-                                    <span>{{ $item['label'] }}</span>
-                                </a>
-                            </li>
+
+                            @if ($hasChildren)
+                                <li>
+                                    <details class="rounded-xl" @if($isActive) open @endif>
+                                        <summary
+                                            class="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-3 text-base font-medium
+                                                {{ $isActive ? 'bg-[var(--color-blue-light)] text-[var(--color-navy)]' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
+                                        >
+                                            <span class="flex items-center gap-3">
+                                                <x-dynamic-component :component="'icons.'.$item['icon']" class="h-5 w-5" />
+                                                <span>{{ $item['label'] }}</span>
+                                            </span>
+                                            @if (isset($item['count']))
+                                                <x-count-chip :count="$item['count']" class="text-xs px-2 py-0.5" />
+                                            @endif
+                                        </summary>
+                                        <div class="mt-1 space-y-1 pl-6">
+                                            @foreach ($item['children'] as $child)
+                                                @php
+                                                    $childParams = $child['params'] ?? [];
+                                                    $childStatus = is_array($childParams) ? ($childParams['status'] ?? '') : '';
+                                                    $childActive = request()->routeIs($child['route']) && (string) $childStatus === $activeHistoryStatus;
+                                                @endphp
+                                                <a
+                                                    href="{{ route($child['route'], $childParams) }}"
+                                                    class="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold
+                                                        {{ $childActive ? 'bg-[var(--color-blue-light)] text-[var(--color-navy)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]' }}"
+                                                >
+                                                    <span>{{ $child['label'] }}</span>
+                                                    @if (isset($child['count']))
+                                                        <x-count-chip :count="$child['count']" class="text-xs px-2 py-0.5" />
+                                                    @endif
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </details>
+                                </li>
+                            @else
+                                <li>
+                                    <a
+                                        href="{{ route($item['route']) }}"
+                                        class="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-base font-medium
+                                            {{ $isActive ? 'bg-[var(--color-blue-light)] text-[var(--color-navy)]' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface)]' }}"
+                                    >
+                                        <span class="flex items-center gap-3">
+                                            <x-dynamic-component :component="'icons.'.$item['icon']" class="h-5 w-5" />
+                                            <span>{{ $item['label'] }}</span>
+                                        </span>
+                                        @if (isset($item['count']))
+                                            <x-count-chip :count="$item['count']" class="text-xs px-2 py-0.5" />
+                                        @endif
+                                    </a>
+                                </li>
+                            @endif
                         @endforeach
                     </ul>
                 </nav>
@@ -128,7 +282,7 @@
 
             <nav class="sticky bottom-0 z-10 border-t border-[var(--color-border)] bg-[var(--color-white)] lg:hidden">
                 <ul class="mx-auto grid max-w-[1280px] px-2 {{ $gridColsClass }}">
-                    @foreach ($menu as $item)
+                    @foreach ($menuMobile as $item)
                         @php
                             $isActive = request()->routeIs($item['route']);
                         @endphp
@@ -140,6 +294,9 @@
                             >
                                 <x-dynamic-component :component="'icons.'.$item['icon']" class="h-5 w-5" />
                                 <span class="leading-none">{{ $item['label'] }}</span>
+                                @if (isset($item['count']))
+                                    <x-count-chip :count="$item['count']" class="text-[10px] px-1.5 py-0.5" />
+                                @endif
                             </a>
                         </li>
                     @endforeach

@@ -6,15 +6,15 @@ use Illuminate\Support\Facades\Cache;
 
 final class AccurateHostDiscovery
 {
-    private const CACHE_KEY = 'accurate.host';
-
     public function __construct(
         private AccurateHttpClient $http,
     ) {}
 
-    public function getHost(): string
+    public function getHost(?string $company = null): string
     {
-        $cached = Cache::get(self::CACHE_KEY);
+        $cacheKey = $this->cacheKey($company);
+
+        $cached = Cache::get($cacheKey);
         if (is_string($cached) && $cached !== '') {
             return $this->normalizeHost($cached);
         }
@@ -22,7 +22,7 @@ final class AccurateHostDiscovery
         $ttlDays = (int) config('accurate.host_cache_ttl_days', 30);
 
         try {
-            $json = $this->http->post('https://account.accurate.id/api/api-token.do');
+            $json = $this->http->post('https://account.accurate.id/api/api-token.do', company: $company);
             $host = $json['d']['database']['host'] ?? null;
 
             if (! is_string($host) || $host === '') {
@@ -31,11 +31,14 @@ final class AccurateHostDiscovery
 
             $host = $this->normalizeHost($host);
 
-            Cache::put(self::CACHE_KEY, $host, now()->addDays($ttlDays));
+            Cache::put($cacheKey, $host, now()->addDays($ttlDays));
 
             return $host;
         } catch (\Throwable $e) {
-            $fallback = (string) config('accurate.default_host');
+            $fallback = $company
+                ? (string) config("accurate.companies.{$company}.default_host")
+                : (string) config('accurate.default_host');
+
             if ($fallback !== '') {
                 return $this->normalizeHost($fallback);
             }
@@ -54,5 +57,15 @@ final class AccurateHostDiscovery
         }
 
         return $host;
+    }
+
+    private function cacheKey(?string $company): string
+    {
+        $company = is_string($company) ? trim(strtolower($company)) : '';
+        if ($company === '') {
+            return 'accurate.host';
+        }
+
+        return 'accurate.host.'.$company;
     }
 }
